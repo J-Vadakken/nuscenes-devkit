@@ -1,9 +1,17 @@
 # nuScenes dev-kit.
 # Code written by Holger Caesar, Caglayan Dicle and Oscar Beijbom, 2019.
 
+
+import sys
+import os
+
+# Add the path to the nuscenes module
+sys.path.append('/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/nuscenes-devkit/python-sdk')
+
+
 import argparse
 import json
-import os
+#import os
 import time
 from typing import Tuple, List, Dict, Any
 
@@ -244,37 +252,47 @@ class TrackingEval:
 if __name__ == "__main__":
 
     # Settings.
-    parser = argparse.ArgumentParser(description='Evaluate nuScenes tracking results.',
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('result_path', type=str, help='The submission as a JSON file.')
-    parser.add_argument('--output_dir', type=str, default='~/nuscenes-metrics',
-                        help='Folder to store result metrics, graphs and example visualizations.')
-    parser.add_argument('--eval_set', type=str, default='val',
-                        help='Which dataset split to evaluate on, train, val or test.')
-    parser.add_argument('--dataroot', type=str, default='/data/sets/nuscenes',
-                        help='Default nuScenes data directory.')
-    parser.add_argument('--version', type=str, default='v1.0-trainval',
-                        help='Which version of the nuScenes dataset to evaluate on, e.g. v1.0-trainval.')
-    parser.add_argument('--config_path', type=str, default='',
-                        help='Path to the configuration file.'
-                             'If no path given, the NIPS 2019 configuration will be used.')
-    parser.add_argument('--render_curves', type=int, default=1,
-                        help='Whether to render statistic curves to disk.')
-    parser.add_argument('--verbose', type=int, default=1,
-                        help='Whether to print to stdout.')
-    parser.add_argument('--render_classes', type=str, default='', nargs='+',
-                        help='For which classes we render tracking results to disk.')
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser(description='Evaluate nuScenes tracking results.',
+    #                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    # parser.add_argument('result_path', type=str, help='The submission as a JSON file.')
+    # parser.add_argument('--output_dir', type=str, default='~/nuscenes-metrics',
+    #                     help='Folder to store result metrics, graphs and example visualizations.')
+    # parser.add_argument('--eval_set', type=str, default='val',
+    #                     help='Which dataset split to evaluate on, train, val or test.')
+    # parser.add_argument('--dataroot', type=str, default='/data/sets/nuscenes',
+    #                     help='Default nuScenes data directory.')
+    # parser.add_argument('--version', type=str, default='v1.0-trainval',
+    #                     help='Which version of the nuScenes dataset to evaluate on, e.g. v1.0-trainval.')
+    # parser.add_argument('--config_path', type=str, default='',
+    #                     help='Path to the configuration file.'
+    #                          'If no path given, the NIPS 2019 configuration will be used.')
+    # parser.add_argument('--render_curves', type=int, default=1,
+    #                     help='Whether to render statistic curves to disk.')
+    # parser.add_argument('--verbose', type=int, default=1,
+    #                     help='Whether to print to stdout.')
+    # parser.add_argument('--render_classes', type=str, default='', nargs='+',
+    #                     help='For which classes we render tracking results to disk.')
+    # args = parser.parse_args()
 
-    result_path_ = os.path.expanduser(args.result_path)
-    output_dir_ = os.path.expanduser(args.output_dir)
-    eval_set_ = args.eval_set
-    dataroot_ = args.dataroot
-    version_ = args.version
-    config_path = args.config_path
-    render_curves_ = bool(args.render_curves)
-    verbose_ = bool(args.verbose)
-    render_classes_ = args.render_classes
+    # result_path_ = os.path.expanduser(args.result_path)
+    # output_dir_ = os.path.expanduser(args.output_dir)
+    # eval_set_ = args.eval_set
+    # dataroot_ = args.dataroot
+    # version_ = args.version
+    # config_path = args.config_path
+    # render_curves_ = bool(args.render_curves)
+    # verbose_ = bool(args.verbose)
+    # render_classes_ = args.render_classes
+
+    result_path_ = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/nuscenes-devkit/python-sdk/nuscenes/eval/JSON_Tracks/tracks/tracks.json'
+    output_dir_ = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/nuscenes-devkit/python-sdk/nuscenes/eval/JSON_Tracks/output'
+    eval_set_ = 'val'
+    dataroot_ = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/nuscenes-devkit/python-sdk/nuscenes/eval/JSON_Tracks/gt'
+    version_ = 'v1.0_custom' #'v1.0-trainval'
+    config_path = 'tracking_my_configs'
+    render_curves_ = 1
+    verbose_ = 1
+    render_classes_ = ''
 
     if config_path == '':
         cfg_ = config_factory('tracking_nips_2019')
