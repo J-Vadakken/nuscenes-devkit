@@ -98,23 +98,40 @@ class TrackingEval:
         if verbose:
             print('Initializing nuScenes tracking evaluation')
 
-        if is_predefined_split(split_name=eval_set):
-            pred_boxes, self.meta = load_prediction(
-                self.result_path, self.cfg.max_boxes_per_sample, TrackingBox, verbose=verbose
-            )
-            gt_boxes = load_gt(nusc, self.eval_set, TrackingBox, verbose=verbose)
-        else:
-            sample_tokens_of_custom_split : List[str] = get_samples_of_custom_split(split_name=eval_set, nusc=nusc)
-            pred_boxes, self.meta = load_prediction_of_sample_tokens(self.result_path, self.cfg.max_boxes_per_sample,
-                TrackingBox, sample_tokens=sample_tokens_of_custom_split, verbose=verbose)
-            gt_boxes = load_gt_of_sample_tokens(nusc, sample_tokens_of_custom_split, TrackingBox, verbose=verbose)
+        # if is_predefined_split(split_name=eval_set):
+        #     pred_boxes, self.meta = load_prediction(
+        #         self.result_path, self.cfg.max_boxes_per_sample, TrackingBox, verbose=verbose
+        #     )
+        #     gt_boxes = load_gt(nusc, self.eval_set, TrackingBox, verbose=verbose)
+        # else:
+        #     sample_tokens_of_custom_split : List[str] = get_samples_of_custom_split(split_name=eval_set, nusc=nusc)
+        #     pred_boxes, self.meta = load_prediction_of_sample_tokens(self.result_path, self.cfg.max_boxes_per_sample,
+        #         TrackingBox, sample_tokens=sample_tokens_of_custom_split, verbose=verbose)
+        #     gt_boxes = load_gt_of_sample_tokens(nusc, sample_tokens_of_custom_split, TrackingBox, verbose=verbose)
+        
+        
+        # Load all sample tokens
+        sample_tokens_all = [s['token'] for s in nusc.sample]
 
+        # Load predictions for all samples
+        pred_boxes, self.meta = load_prediction_of_sample_tokens(
+            self.result_path, self.cfg.max_boxes_per_sample, TrackingBox, sample_tokens=sample_tokens_all, verbose=verbose
+        )
+
+        # Load ground truth for all samples
+        gt_boxes = load_gt_of_sample_tokens(nusc, sample_tokens_all, TrackingBox, verbose=verbose)
+
+        
+        aasdf = set(sorted(gt_boxes.sample_tokens))
+        asdf = set(sorted(pred_boxes.sample_tokens))
         assert set(pred_boxes.sample_tokens) == set(gt_boxes.sample_tokens), \
             "Samples in split don't match samples in predicted tracks."
 
         # Add center distances.
-        pred_boxes = add_center_dist(nusc, pred_boxes)
-        gt_boxes = add_center_dist(nusc, gt_boxes)
+        #pred_boxes = add_center_dist(nusc, pred_boxes)
+        #gt_boxes = add_center_dist(nusc, gt_boxes)
+        # We can comment these out because pred_boxes and gt_boxes are already give wrt to the ego vehicle
+
 
         # Filter boxes (distance, points per box, etc.).
         if verbose:
@@ -157,6 +174,7 @@ class TrackingEval:
             metric_data_list.set(curr_class_name, curr_md)
 
         for class_name in self.cfg.class_names:
+            print(class_name)
             accumulate_class(class_name)
 
         # -----------------------------------
@@ -284,14 +302,17 @@ if __name__ == "__main__":
     # verbose_ = bool(args.verbose)
     # render_classes_ = args.render_classes
 
-    result_path_ = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/nuscenes-devkit/python-sdk/nuscenes/eval/JSON_Tracks/tracks/tracks.json'
-    output_dir_ = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/nuscenes-devkit/python-sdk/nuscenes/eval/JSON_Tracks/output'
-    eval_set_ = 'val'
-    dataroot_ = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/nuscenes-devkit/python-sdk/nuscenes/eval/JSON_Tracks/gt'
-    version_ = 'v1.0_custom' #'v1.0-trainval'
-    config_path = 'tracking_my_configs'
+    result_path_ = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/JSON_Tracks/tracks/track.json'
+    output_dir_ = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/JSON_Tracks/output/plots'
+    eval_set_ = 'mini'
+
+    dataroot_ = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/Our_Data/trial1/Perfect_tracks_2/mini_data'
+    dataroot_ = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/JSON_Tracks/gt'
+    
+    version_ = 'v1.0-mini' #'v1.0-trainval'
+    config_path = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/nuscenes-devkit/python-sdk/nuscenes/eval/tracking/configs/tracking_my_configs.json'
     render_curves_ = 1
-    verbose_ = 1
+    verbose_ = True
     render_classes_ = ''
 
     if config_path == '':

@@ -25,17 +25,16 @@ def category_to_tracking_name(category_name: str) -> Optional[str]:
     :return: nuScenes tracking class.
     """
     tracking_mapping = {
-        'vehicle.bicycle': 'bicycle',
-        'vehicle.bus.bendy': 'bus',
-        'vehicle.bus.rigid': 'bus',
-        'vehicle.car': 'car',
-        'vehicle.motorcycle': 'motorcycle',
-        'human.pedestrian.adult': 'pedestrian',
-        'human.pedestrian.child': 'pedestrian',
-        'human.pedestrian.construction_worker': 'pedestrian',
-        'human.pedestrian.police_officer': 'pedestrian',
-        'vehicle.trailer': 'trailer',
-        'vehicle.truck': 'truck'
+    "traffic_sign": "traffic_sign",
+    "yield_sign": "yield_sign",
+    "stop_sign": "stop_sign",
+    "railroad_bar_down": "railroad_bar_down",
+    "type_3_barricade": "type_3_barricade",
+    "construction_barrel": "construction_barrel",
+    "deer": "deer",
+    "pedestrian": "pedestrian",
+    "car": "car",
+    "other_sign: ": "other_sign",
     }
 
     if category_name in tracking_mapping:

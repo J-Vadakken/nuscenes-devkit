@@ -171,11 +171,11 @@ class NuScenes:
             record['category_name'] = self.get('category', inst['category_token'])['name']
 
         # Decorate (adds short-cut) sample_data with sensor information.
-        for record in self.sample_data:
-            cs_record = self.get('calibrated_sensor', record['calibrated_sensor_token'])
-            sensor_record = self.get('sensor', cs_record['sensor_token'])
-            record['sensor_modality'] = sensor_record['modality']
-            record['channel'] = sensor_record['channel']
+        # for record in self.sample_data:
+        #     cs_record = self.get('calibrated_sensor', record['calibrated_sensor_token'])
+        #     sensor_record = self.get('sensor', cs_record['sensor_token'])
+        #     record['sensor_modality'] = sensor_record['modality']
+        #     record['channel'] = sensor_record['channel']
 
         # Reverse-index samples with sample_data and annotations.
         for record in self.sample:
@@ -192,14 +192,14 @@ class NuScenes:
             sample_record['anns'].append(ann_record['token'])
 
         # Add reverse indices from log records to map records.
-        if 'log_tokens' not in self.map[0].keys():
-            raise Exception('Error: log_tokens not in map table. This code is not compatible with the teaser dataset.')
-        log_to_map = dict()
-        for map_record in self.map:
-            for log_token in map_record['log_tokens']:
-                log_to_map[log_token] = map_record['token']
-        for log_record in self.log:
-            log_record['map_token'] = log_to_map[log_record['token']]
+        # if 'log_tokens' not in self.map[0].keys():
+        #     raise Exception('Error: log_tokens not in map table. This code is not compatible with the teaser dataset.')
+        # log_to_map = dict()
+        # for map_record in self.map:
+        #     for log_token in map_record['log_tokens']:
+        #         log_to_map[log_token] = map_record['token']
+        # for log_record in self.log:
+        #     log_record['map_token'] = log_to_map[log_record['token']]
 
         if verbose:
             print("Done reverse indexing in {:.1f} seconds.\n======".format(time.time() - start_time))

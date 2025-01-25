@@ -77,10 +77,14 @@ def load_gt(nusc: NuScenes, eval_split: str, box_cls, verbose: bool = False) -> 
         assert version.endswith('trainval'), \
             'Error: Requested split {} which is not compatible with NuScenes version {}'.format(eval_split, version)
     elif eval_split in {'mini_train', 'mini_val'}:
-        assert version.endswith('mini'), \
-            'Error: Requested split {} which is not compatible with NuScenes version {}'.format(eval_split, version)
+        #assert version.endswith('mini'), \
+        #    'Error: Requested split {} which is not compatible with NuScenes version {}'.format(eval_split, version)
+        pass
     elif eval_split == 'test':
         assert version.endswith('test'), \
+            'Error: Requested split {} which is not compatible with NuScenes version {}'.format(eval_split, version)
+    elif eval_split == 'custom':
+        assert version.endswith('custom'), \
             'Error: Requested split {} which is not compatible with NuScenes version {}'.format(eval_split, version)
     else:
         raise ValueError('Error: Requested split {} which this function cannot map to the correct NuScenes version.'
