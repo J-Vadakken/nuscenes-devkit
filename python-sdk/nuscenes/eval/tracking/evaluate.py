@@ -284,12 +284,14 @@ if __name__ == "__main__":
     # verbose_ = bool(args.verbose)
     # render_classes_ = args.render_classes
 
-    result_path_ = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/nuscenes-devkit/python-sdk/nuscenes/eval/JSON_Tracks/tracks/tracks.json'
-    output_dir_ = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/nuscenes-devkit/python-sdk/nuscenes/eval/JSON_Tracks/output'
-    eval_set_ = 'val'
-    dataroot_ = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/nuscenes-devkit/python-sdk/nuscenes/eval/JSON_Tracks/gt'
-    version_ = 'v1.0_custom' #'v1.0-trainval'
+    result_path_ = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/nuscenes-devkit/Data/tracks/track.json'
+    output_dir_ = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/nuscenes-devkit/Data/output'
+    eval_set_ = 'mini_val'
+    dataroot_ = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/nuscenes-devkit/Data/gt/v1.0-mini'
+    dataroot_ = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/Our_Data/trial1/Perfect_tracks_2/mini_data'
+    version_ = 'v1.0-mini' #'v1.0-trainval'
     config_path = 'tracking_my_configs'
+    config_path = ''
     render_curves_ = 1
     verbose_ = 1
     render_classes_ = ''
