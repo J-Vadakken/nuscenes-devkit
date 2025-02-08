@@ -1,0 +1,13 @@
+{
+    "python_sdk_path_": "/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/nuscenes-devkit/python-sdk",
+    "datumaro_dataroot_" : "/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/Our_Data/trial1/annotations/default.json",
+    "rosbag_path_": "/home/jgv555/CS/aUToronto/Rosbags/2024-05-28_barrel_is_barricade_0",
+
+    "dataroot_": "/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/Testing_arbitrary_folder_path/Data",
+
+    "eval_set_": "mini",
+    "version_": "v1.0-mini",
+    "render_curves_": true,
+    "verbose_": true,
+    "render_classes_": ""
+}

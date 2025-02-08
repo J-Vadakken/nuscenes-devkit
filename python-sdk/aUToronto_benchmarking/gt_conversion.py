@@ -1,24 +1,38 @@
 # This file takes in a Datumaro dataset, and creates the ground truths for the nuscenes evaluation code. 
 
-import json
+# You MUST have a timestamp dictionary already created
+# You MUST have a default.json file that contains the CVAT annotations in the Datumaro 3D 1.0 format
+# In the config file, make sure you've linked the paths properly
+# This code will create the ground truths in the nuscenes format, and store it in 
+# dataroot_ + 'gt/v1.0-mini'
+
+
+import sys
 import os
+import json
 import uuid
+
+# Get the directory of the current file
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
+config_path = os.path.join(current_dir, 'config.json')
+
+# Load the config.json file
+with open(config_path, 'r') as config_file:
+    config = json.load(config_file)
 
 # Some assumptions we've made for this code:
 # For sake of coordination between results and the original data, we will use the frame number
 # to generate the sample_token for each frame, by extending the frame number to a 32-character
 
 
-
 # Path to the default.json file
-default_json_path = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/Our_Data/trial1/annotations/default.json'
-timestamp_dict_json_path = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/Our_Data/trial1/annotations/timestamp_dict_2.json'
-
-# Path to where you want to output the ground truths. 
-nusc_folder_path = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/nuscenes-devkit/Data/gt/v1.0-mini'
+default_json_path = config["datumaro_dataroot_"]
+timestamp_dict_json_path = config["dataroot_"] + '/timestamp_dict.json' # Path to the timestamp dictionary
+nusc_folder_path = config["dataroot_"] + '/gt/v1.0-mini' # Path to where you want to output the ground truths. 
 
 # Path to parent point cloud folder
-pcd_folder_path = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/Our_Data/trial1/point_clouds/default'
+#pcd_folder_path = config["datamaro_dataroot_pcd_"]
 
 # Read the default.json file
 with open(default_json_path, 'r') as file:
@@ -59,7 +73,6 @@ def unique_token_generator():
 def sample_data_token(frame_number):
     return str(f"{frame_number:032d}")
 
-print("There is a size mismatch!!!")
 
 # JSON files:
 # Creating some tokens for universal use.
@@ -296,7 +309,7 @@ for i in range(len(valid_frames)-1):
         "is_key_frame": False,
         "height": 0, # Prob not important
         "width": 0, # Prob not important
-        "filename": f"{pcd_folder_path}/{item_ind:06d}.pcd",
+        "filename": "", #f"{pcd_folder_path}/{item_ind:06d}.pcd",
         "prev": prev,
         "next": next
     })

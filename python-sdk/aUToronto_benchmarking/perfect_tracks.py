@@ -1,16 +1,35 @@
+# This file takes in a Datumaro dataset, and creates 
+# theoretical perfect tracks for each object in the dataset.
+
+# You MUST have a timestamp dictionary already created
+# You MUST have a default.json file that contains the CVAT annotations in the Datumaro 3D 1.0 format
+# In the config file, make sure you've linked the paths properly
+# This code will create the tracks in the nuscenes submission format, and store it in 
+# dataroot_ + 'track/track.json'
+
+# IMPORTANT: if you already have another track in that folder, that you wish to save, either rename it
+# or be preparted to lose it. 
+
 # This file takes in a Datumaro dataset, and creates theoretical perfect tracks for each object in the dataset.
 
 
 import json
 import os
-import uuid
 import numpy as np
 
+# Get the directory of the current file
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
+config_path = os.path.join(current_dir, 'config.json')
+
+# Load the config.json file
+with open(config_path, 'r') as config_file:
+    config = json.load(config_file)
 
 # Path to the default.json file
-default_json_path = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/Our_Data/trial1/annotations/default.json'
-output_file_path = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/nuscenes-devkit/Data/tracks/track.json'
-timestamp_file_path = '/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/Our_Data/trial1/annotations/timestamp_dict_2.json'
+default_json_path = config["datumaro_dataroot_"]
+timestamp_file_path = config["dataroot_"] + '/timestamp_dict.json'
+output_file_path = config["dataroot_"] + '/tracks/track.json'
 
 # Load the default.json file
 with open(default_json_path, 'r') as f:
@@ -19,6 +38,9 @@ with open(default_json_path, 'r') as f:
 # Load timestamp_dict
 with open(timestamp_file_path, 'r') as f:
     timestamp_dict = json.load(f)
+
+if not os.path.exists(config["dataroot_"] + '/tracks'):
+    os.makedirs(config["dataroot_"] + '/tracks')
 
 # Create a function to easily write to json files
 def write_json(data):

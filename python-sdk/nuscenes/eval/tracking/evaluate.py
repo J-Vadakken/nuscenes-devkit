@@ -6,8 +6,7 @@ import sys
 import os
 
 # Add the path to the nuscenes module
-sys.path.append('/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/nuscenes-devkit/python-sdk')
-
+#sys.path.append('/home/jgv555/CS/aUToronto/Nuscenes_Track_Metrics/nuscenes-devkit/python-sdk')
 
 import argparse
 import json
@@ -236,6 +235,8 @@ class TrackingEval:
         # For each metric, plot all the classes in one diagram.
         for metric_name in LEGACY_METRICS:
             recall_metric_curve(self.cfg, md_list, metric_name, savepath=savepath('%s' % metric_name))
+
+        print(f"Plots saved in {self.plot_dir}")
 
     def main(self, render_curves: bool = True) -> Dict[str, Any]:
         """
