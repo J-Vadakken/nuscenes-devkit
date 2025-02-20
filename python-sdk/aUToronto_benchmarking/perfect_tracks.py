@@ -28,16 +28,24 @@ with open(config_path, 'r') as config_file:
 
 # Path to the default.json file
 default_json_path = config["datumaro_dataroot_"]
-timestamp_file_path = config["dataroot_"] + '/timestamp_dict.json'
+timestamp_file_path = config["dataroot_"] + '/timestamp'
 output_file_path = config["dataroot_"] + '/tracks/track.json'
 
-# Load the default.json file
-with open(default_json_path, 'r') as f:
-    default = json.load(f)
+# Load the default.json files
+json_files = []
+for filename in sorted(os.listdir(default_json_path)):
+    if filename.endswith('.json'):
+        with open(os.path.join(default_json_path, filename), 'r') as file:
+            json_files.append(json.load(file))
+default = json_files[0]
 
 # Load timestamp_dict
-with open(timestamp_file_path, 'r') as f:
-    timestamp_dict = json.load(f)
+timestamp_files = []
+for filename in sorted(os.listdir(timestamp_file_path)):
+    if filename.endswith('.json'):
+        with open(os.path.join(timestamp_file_path, filename), 'r') as file:
+            timestamp_files.append(json.load(file))
+timestamp_dict = timestamp_files[0]
 
 if not os.path.exists(config["dataroot_"] + '/tracks'):
     os.makedirs(config["dataroot_"] + '/tracks')

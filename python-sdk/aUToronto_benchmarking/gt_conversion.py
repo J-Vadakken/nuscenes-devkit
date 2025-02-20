@@ -26,20 +26,28 @@ with open(config_path, 'r') as config_file:
 # to generate the sample_token for each frame, by extending the frame number to a 32-character
 
 
-# Path to the default.json file
+# Path to the default.json files
 default_json_path = config["datumaro_dataroot_"]
-timestamp_dict_json_path = config["dataroot_"] + '/timestamp_dict.json' # Path to the timestamp dictionary
+timestamp_dict_json_path = config["dataroot_"] + '/timestamp' # Path to the timestamp dictionary
 nusc_folder_path = config["dataroot_"] + '/gt/v1.0-mini' # Path to where you want to output the ground truths. 
 
 # Path to parent point cloud folder
 #pcd_folder_path = config["datamaro_dataroot_pcd_"]
 
 # Read the default.json file
-with open(default_json_path, 'r') as file:
-    default_data = json.load(file)
+json_files = []
+for filename in sorted(os.listdir(default_json_path)):
+    if filename.endswith('.json'):
+        with open(os.path.join(default_json_path, filename), 'r') as file:
+            json_files.append(json.load(file))
+default_data = json_files[0]
 # Red the timestamps file
-with open(timestamp_dict_json_path, 'r') as file:
-    timestamp_dict = json.load(file)
+timestamp_files = []
+for filename in sorted(os.listdir(timestamp_dict_json_path)):
+    if filename.endswith('.json'):
+        with open(os.path.join(timestamp_dict_json_path, filename), 'r') as file:
+            timestamp_files.append(json.load(file))
+    timestamp_dict = timestamp_files[0]
 # Ensure the nusc folder exists
 os.makedirs(nusc_folder_path, exist_ok=True)
 
