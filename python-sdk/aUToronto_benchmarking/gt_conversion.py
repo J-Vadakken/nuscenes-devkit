@@ -34,20 +34,46 @@ nusc_folder_path = config["dataroot_"] + '/gt/v1.0-mini' # Path to where you wan
 # Path to parent point cloud folder
 #pcd_folder_path = config["datamaro_dataroot_pcd_"]
 
+# Get file names from rosbag list
+rosbag_list = config["rosbag_path_"]
+file_names = []
+for rosbag in rosbag_list:
+    file_names.append(rosbag.split('/')[-1].split('.')[0])
 # Read the default.json file
-json_files = []
+json_files = {}
+json_file_names = [] # Temp variable for comparison
 for filename in sorted(os.listdir(default_json_path)):
     if filename.endswith('.json'):
+        if filename.split('.')[0] not in file_names:
+            print("File ", filename, " not in rosbag list. Skipping")
+            continue
         with open(os.path.join(default_json_path, filename), 'r') as file:
-            json_files.append(json.load(file))
-default_data = json_files[0]
-# Red the timestamps file
-timestamp_files = []
+            json_files[filename] = json.load(file)
+            json_file_names.append(filename)
+default_data = json_files[json_file_names[0]]
+for file in file_names:
+    if file + ".json" not in json_file_names:
+        print("File ", file, " not in annotations. Quitting Program")
+        quit()
+
+
+# Read the timestamps file
+timestamp_files = {}
+timestamp_files_names = [] # Temp variable for comparison
 for filename in sorted(os.listdir(timestamp_dict_json_path)):
     if filename.endswith('.json'):
+        if filename.split('.')[0] not in file_names:
+            print("File ", filename, " not in rosbag list. Skipping")
+            continue
         with open(os.path.join(timestamp_dict_json_path, filename), 'r') as file:
-            timestamp_files.append(json.load(file))
-    timestamp_dict = timestamp_files[0]
+            timestamp_files[filename] = json.load(file)
+            timestamp_files_names.append(filename)
+    timestamp_dict = timestamp_files[json_file_names[0]]
+for file in file_names:
+    if file + ".json" not in timestamp_files_names:
+        print("File ", file, " not in timestamps. Quitting Program")
+        quit()
+
 # Ensure the nusc folder exists
 os.makedirs(nusc_folder_path, exist_ok=True)
 
