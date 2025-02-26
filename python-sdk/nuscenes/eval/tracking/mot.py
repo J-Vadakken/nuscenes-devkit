@@ -105,6 +105,7 @@ class MOTAccumulatorCustom(motmetrics.mot.MOTAccumulator):
 
             # Update index
             if update_frame_indices:
+                print(r.index.get_level_values(0).max())
                 next_frame_id = max(r.index.get_level_values(0).max() + 1,
                                     r.index.get_level_values(0).unique().shape[0])
                 if np.isnan(next_frame_id):

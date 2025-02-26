@@ -48,14 +48,17 @@ for filename in sorted(os.listdir(default_json_path)):
             print("File ", filename, " not in rosbag list. Skipping")
             continue
         with open(os.path.join(default_json_path, filename), 'r') as file:
-            json_files[filename] = json.load(file)
+            json_files[filename[:-5]] = json.load(file)
             json_file_names.append(filename)
-default_data = json_files[json_file_names[0]]
 for file in file_names:
     if file + ".json" not in json_file_names:
         print("File ", file, " not in annotations. Quitting Program")
         quit()
-
+# Garbage collection to help avoid later bugs
+del rosbag
+del json_file_names
+del filename
+del file
 
 # Read the timestamps file
 timestamp_files = {}
@@ -66,13 +69,17 @@ for filename in sorted(os.listdir(timestamp_dict_json_path)):
             print("File ", filename, " not in rosbag list. Skipping")
             continue
         with open(os.path.join(timestamp_dict_json_path, filename), 'r') as file:
-            timestamp_files[filename] = json.load(file)
+            timestamp_files[filename[:-5]] = json.load(file)
             timestamp_files_names.append(filename)
-    timestamp_dict = timestamp_files[json_file_names[0]]
 for file in file_names:
     if file + ".json" not in timestamp_files_names:
         print("File ", file, " not in timestamps. Quitting Program")
         quit()
+
+# Garbage collection to help avoid later bugs
+del timestamp_files_names
+del filename
+del file
 
 # Ensure the nusc folder exists
 os.makedirs(nusc_folder_path, exist_ok=True)
@@ -88,7 +95,7 @@ nusc_file_names = ["attribute", "log" , "scene",
 for file_name in nusc_file_names:
     new_file_path = os.path.join(nusc_folder_path, f"{file_name}.json")
     nusc_json_files[file_name] = new_file_path
-
+del file_name
     # with open(new_file_path, 'w') as new_file:
     #     json.dump(default_data, new_file, indent=4)
 
@@ -104,8 +111,8 @@ def unique_token_generator():
     return uuid.uuid4().hex
 
 # Creating tokens for sample_data
-def sample_data_token(frame_number):
-    return str(f"{frame_number:032d}")
+def sample_data_token(scene_number, frame_number):
+    return str(f"{scene_number:010d}{frame_number:022d}")
 
 
 # JSON files:
@@ -116,19 +123,33 @@ def sample_data_token(frame_number):
 #                     "railroad_bar_down","type_3_barricade",
 #                     "construction_barrel","deer","pedestrian",
 #                     "car","other_sign"]
+
+num_to_category_dict = {} # Uses file_name as key
 category_tokens = {}
-num_to_category = {}
-class_categories = []
-# class categories by numbers
-for i, category in enumerate(default_data["categories"]["label"]["labels"]):
-    num_to_category[i] = category["name"]
-    class_categories.append(category["name"])
+class_categories = [] # Assuming class categories don't change across different submissions
+for file in file_names:
+    default_data = json_files[file]
+    num_to_category = {}
+    # class categories by numbers
+    for i, category in enumerate(default_data["categories"]["label"]["labels"]):
+        num_to_category[i] = category["name"]
+        if category["name"] not in class_categories:
+            class_categories.append(category["name"])
+    num_to_category_dict[file] = num_to_category
 for i, category in enumerate(class_categories):
     category_tokens[category] = unique_token_generator()
 
+# Garbage collection to help avoid later bugs
+del file 
+del default_data, 
+del num_to_category
+del category
+del i
 
 # For scene
-scene_token = unique_token_generator()
+scene_dict = {}
+for file in file_names:
+    scene_dict[file] = unique_token_generator()
 
 # For log
 log_token = unique_token_generator()
@@ -144,57 +165,100 @@ log_token = unique_token_generator()
 # default.json for job 256 is missing frames: [116, 128, 260, 309, 416]
 
 # For sample_data. Must make sure that timestamp and frame_number actually match.
-sample_data_tokens = {}
-valid_frames = []
-for i, sample_data in enumerate(default_data["items"]):
-    #sample_data_tokens[sample_data["attr"]["frame"]] = unique_token_generator()
-    # more convenient to use index
-    if timestamp_dict.get(str(default_data["items"][i]["attr"]["frame"])) == None:
-        print("Frame ", default_data["items"][i]["attr"]["frame"], " is missing")
-        continue
-    valid_frames.append(i)
-    sample_data_tokens[i] = sample_data_token(default_data["items"][i]["attr"]["frame"])
+sample_data_tokens_dict = {} # key is the file_name
+valid_fames_dict = {} # Key is the file_name
+for file_index, file in enumerate(file_names):
+    default_data = json_files[file]
+    timestamp_dict = timestamp_files[file]
 
-# Need an ego_poes token for each timestamp. 
-ego_pose_tokens = {}
-for i in valid_frames:
-    ego_pose_tokens[i] = unique_token_generator()
+    sample_data_tokens = {}
+    valid_frames = []
+    for i, sample_data in enumerate(default_data["items"]):
+        #sample_data_tokens[sample_data["attr"]["frame"]] = unique_token_generator()
+        # more convenient to use index
+        if timestamp_dict.get(str(default_data["items"][i]["attr"]["frame"])) == None:
+            print("Frame ", default_data["items"][i]["attr"]["frame"], " is missing")
+            continue
+        valid_frames.append(i)
+        sample_data_tokens[i] = sample_data_token(file_index, default_data["items"][i]["attr"]["frame"])
+    
+    valid_fames_dict[file] = valid_frames
+    sample_data_tokens_dict[file] = sample_data_tokens
+
+# Garabge Collection for easier debugging
+del file, default_data, timestamp_dict
+del sample_data_tokens, valid_frames
+del i, sample_data
+
+# Need an ego_poes token for each timestamp.
+ego_pose_tokens_dict = {} # scene num key dict
+for file in file_names:
+    valid_frames = valid_fames_dict[file]
+    ego_pose_tokens = {}
+    for i in valid_frames:
+        ego_pose_tokens[i] = unique_token_generator()
+    ego_pose_tokens_dict[file] = ego_pose_tokens
+# Garbage collection for easier debugging
+del file, valid_frames, ego_pose_tokens
+del i
 
 sensor_token = unique_token_generator()
 
 calibrated_sensor_token = unique_token_generator()
 
 # Need to keep track of each instance of an object. and create annotation tokens.
-instance_tokens = {}
-first_instance_tokens = {}
-last_instance_tokens = {}
-nbr_instance_tokens = {}
-instance_category_tokens = {}
-annotation_tokens = {}
-prev_annotation_token = {}
-next_annotation_token = {}
-for i in range(len(valid_frames)):
-    item_ind = valid_frames[i]
+annot_file_name_dict = {} # Key is the file name
+for file in file_names: 
+    default_data = json_files[file]
+    valid_frames = valid_fames_dict[file]
+    num_to_category = num_to_category_dict[file]
+    
+    
+    instance_tokens = {}
+    first_instance_tokens = {}
+    last_instance_tokens = {}
+    nbr_instance_tokens = {}
+    instance_category_tokens = {}
+    annotation_tokens = {}
+    prev_annotation_token = {}
+    next_annotation_token = {}
+    for i in range(len(valid_frames)):
+        item_ind = valid_frames[i]
 
-    if annotation_tokens.get(item_ind) == None:
-        annotation_tokens[item_ind] = {}
-    for j, instance in enumerate(default_data["items"][item_ind]["annotations"]):
-        annotation_tokens[item_ind][j] = unique_token_generator()
-        tid = instance["attributes"]["track_id"]
-        if instance_tokens.get(tid) == None:
-            instance_tokens[tid] = unique_token_generator()
-            first_instance_tokens[tid] = annotation_tokens[item_ind][j]
-            last_instance_tokens[tid] = annotation_tokens[item_ind][j]
-            nbr_instance_tokens[tid] = 1
-            instance_category_tokens[tid] = category_tokens[num_to_category[instance["label_id"]]]
-            prev_annotation_token[annotation_tokens[item_ind][j]] = ""
-            next_annotation_token[annotation_tokens[item_ind][j]] = ""
-        else:
-            prev_annotation_token[annotation_tokens[item_ind][j]] = last_instance_tokens[tid]
-            next_annotation_token[last_instance_tokens[tid]] = annotation_tokens[item_ind][j]
-            next_annotation_token[annotation_tokens[item_ind][j]] = ""
-            last_instance_tokens[tid] = annotation_tokens[item_ind][j]
-            nbr_instance_tokens[tid] += 1
+        if annotation_tokens.get(item_ind) == None:
+            annotation_tokens[item_ind] = {}
+        for j, instance in enumerate(default_data["items"][item_ind]["annotations"]):
+            annotation_tokens[item_ind][j] = unique_token_generator()
+            tid = instance["attributes"]["track_id"]
+            if instance_tokens.get(tid) == None:
+                instance_tokens[tid] = unique_token_generator()
+                first_instance_tokens[tid] = annotation_tokens[item_ind][j]
+                last_instance_tokens[tid] = annotation_tokens[item_ind][j]
+                nbr_instance_tokens[tid] = 1
+                instance_category_tokens[tid] = category_tokens[num_to_category[instance["label_id"]]]
+                prev_annotation_token[annotation_tokens[item_ind][j]] = ""
+                next_annotation_token[annotation_tokens[item_ind][j]] = ""
+            else:
+                prev_annotation_token[annotation_tokens[item_ind][j]] = last_instance_tokens[tid]
+                next_annotation_token[last_instance_tokens[tid]] = annotation_tokens[item_ind][j]
+                next_annotation_token[annotation_tokens[item_ind][j]] = ""
+                last_instance_tokens[tid] = annotation_tokens[item_ind][j]
+                nbr_instance_tokens[tid] += 1
+
+    annot_file_name_dict[file] = {}
+    annot_file_name_dict[file]["instance_tokens"] = instance_tokens
+    annot_file_name_dict[file]["first_instance_tokens"] = first_instance_tokens
+    annot_file_name_dict[file]["last_instance_tokens"] = last_instance_tokens
+    annot_file_name_dict[file]["nbr_instance_tokens"] = nbr_instance_tokens
+    annot_file_name_dict[file]["instance_category_tokens"] = instance_category_tokens
+    annot_file_name_dict[file]["annotation_tokens"] = annotation_tokens
+    annot_file_name_dict[file]["prev_annotation_token"] = prev_annotation_token
+    annot_file_name_dict[file]["next_annotation_token"] = next_annotation_token
+# Garbage collection for easier debugging
+del file, valid_frames, default_data, num_to_category
+del instance_tokens, first_instance_tokens, last_instance_tokens, nbr_instance_tokens
+del instance_category_tokens, annotation_tokens, prev_annotation_token, next_annotation_token
+del j, instance
 
 
 # First we'll do the bird files
@@ -202,7 +266,8 @@ for i in range(len(valid_frames)):
 # 1 
 # Create the attribute.json file
 # We can leave this empty
-write_json("attribute", [])
+def write_attribute():
+    write_json("attribute", [])
 
 # 2
 # calibrated_sensor.json
@@ -215,7 +280,8 @@ write_json("attribute", [])
 #    "camera_intrinsic": []
 #     }
 # ]
-write_json("calibrated_sensor", [])
+def write_calibrated_sensor():
+    write_json("calibrated_sensor", [])
 
 
 # 3. sensor.json
@@ -225,165 +291,214 @@ write_json("calibrated_sensor", [])
 #     "channel": "RADAR",
 #     "modality": "radar"
 # }
-write_json("sensor", [])
+def write_sensor():
+    write_json("sensor", [])
 
 # 4 visibility
-to_write = [{
-    "description": "I literally don't care. Between 0 and a 100",
-    "token": "1",
-    "level": "v0-40"
-}]
-write_json("visibility", to_write)
+def write_visibility():
+    to_write = [{
+        "description": "I literally don't care. Between 0 and a 100",
+        "token": "1",
+        "level": "v0-40"
+    }]
+    write_json("visibility", to_write)
 
 # 5. categories
 # category.json
-to_write_in = []
-for i, category in enumerate(class_categories):
-    to_write_in.append({
-        "token": category_tokens[category],
-        "name": category,
-        "description": ""
-    })
-write_json("category", to_write_in)
+def write_category():
+    to_write = []
+    for i, category in enumerate(class_categories):
+        to_write.append({
+            "token": category_tokens[category],
+            "name": category,
+            "description": "peepoopoo"
+        })
+    write_json("category", to_write)
 
 # 6. scene.json
-to_write = [
-    {
-    "token": scene_token,
-    "log_token": log_token,
-    "nbr_samples": len(default_data["items"]),
-    "first_sample_token": sample_data_tokens[0],
-    "last_sample_token": sample_data_tokens[len(sample_data_tokens) - 1],
-    "name": "DA SCENE",
-    "description": "STUPID IDIOTIC SCENE"
-    }
-]
-write_json("scene", to_write)
+def write_scene():
+    to_write = []
+    for index, file in enumerate(file_names):
+        to_write.append(
+            {
+            "token": scene_dict[file],
+            "log_token": log_token,
+            "nbr_samples": len(valid_fames_dict[file]),
+            "first_sample_token": sample_data_tokens_dict[file][valid_fames_dict[file][0]],
+            "last_sample_token": sample_data_tokens_dict[file][valid_fames_dict[file][len(valid_fames_dict[file]) - 1]],
+            "name": f"{file}_scene_{index}",
+            "description": f"STUPID IDIOTIC SCENE {index}"
+            })
+
+    write_json("scene", to_write)
 
 # 7. map.json
-write_json("map", []) # Hopefully, leaving it blank to indicate we have no maps is ok
+def write_map():
+    write_json("map", []) # Hopefully, leaving it blank to indicate we have no maps is ok
 # From analyzing the file it seems fine.
 
 # 8. log.json
-to_write = [{
-    "token": log_token,
-    "logfile": "",
-    "vehicle": "ARTEMIS",
-    "date_captured": "n.d",
-    "location": "Atlantis"
-    }]
-write_json("log", to_write)
+def write_log():
+    to_write = [{
+        "token": log_token,
+        "logfile": "",
+        "vehicle": "ARTEMIS",
+        "date_captured": "n.d",
+        "location": "Atlantis"
+        }]
+    write_json("log", to_write)
 
 # 9. sample.json
-to_write = []
+def write_sample():
+    to_write = []
+    for file in file_names:
+        sample_data_tokens = sample_data_tokens_dict[file]
+        default_data = json_files[file]
+        valid_frames = valid_fames_dict[file]
+        timestamp_dict = timestamp_files[file]
+        scene_token = scene_dict[file]
 
-for i, item_num in enumerate(valid_frames):
-    #print(i, " ", item_num)
-    if i == 0:
-        prev = ""
-    else:
-        prev = sample_data_tokens[i-1]
-    if i == len(valid_frames) - 1:
-        next = ""
-    else:
-        next = sample_data_tokens[i+1]
+        for i, item_num in enumerate(valid_frames):
+            #print(i, " ", item_num)
+            if i == 0:
+                prev = ""
+            else:
+                prev = sample_data_tokens[i-1]
+            if i == len(valid_frames) - 1:
+                next = ""
+            else:
+                next = sample_data_tokens[i+1]
 
-    time_list = timestamp_dict[str(default_data["items"][item_num]["attr"]["frame"])]
-    time_val1 = time_list[0] * 10**6
-    time_val2 = time_list[1] // (10**3)
-    time_val = time_val1 + time_val2
-    to_write.append({
-    "token": sample_data_tokens[i],
-    "timestamp": time_val,
-    "prev": prev,
-    "next": next,
-    "scene_token": scene_token
-    })
-write_json("sample", to_write)
+            time_list = timestamp_dict[str(default_data["items"][item_num]["attr"]["frame"])]
+            time_val1 = time_list[0] * 10**6
+            time_val2 = time_list[1] // (10**3)
+            time_val = time_val1 + time_val2
+            to_write.append({
+            "token": sample_data_tokens[i],
+            "timestamp": time_val,
+            "prev": prev,
+            "next": next,
+            "scene_token": scene_token
+            })
+    write_json("sample", to_write)
 
 # 10 ego_pose.json
 # As far as I can tell, these values are not used for tracking purposes,
 # so we may put in dummy variables
-to_write = []
-for i in valid_frames:
-    to_write.append({
-        "token": ego_pose_tokens[i],
-        "timestamp": timestamp_dict[str(default_data["items"][i]["attr"]["frame"])],
-        "rotation": [0,0,0,0],
-        "translation": [0,0,0]
-    })
-write_json("ego_pose", to_write)
+def write_ego_pose():
+    to_write = []
+    for file in file_names:
+        ego_pose_tokens = ego_pose_tokens_dict[file]
+        default_data = json_files[file]
+        valid_frames = valid_fames_dict[file]
+        timestamp_dict = timestamp_files[file]
+        for i in valid_frames:
+            to_write.append({
+                "token": ego_pose_tokens[i],
+                "timestamp": timestamp_dict[str(default_data["items"][i]["attr"]["frame"])],
+                "rotation": [0,0,0,0],
+                "translation": [0,0,0]
+            })
+    write_json("ego_pose", to_write)
 
 
 
 # 11. sample_data.json
-to_write = []
-for i in range(len(valid_frames)-1):
-    if i == 0:
-        prev = ""
-    else:
-        prev = sample_data_tokens[i-1]
-    if i == len(valid_frames) - 1:
-        next = ""
-    else:
-        next = sample_data_tokens[i+1]
-    item_ind = valid_frames[i]
+def write_sample_data():
+    to_write = []
+    for file in file_names:
+        valid_frames = valid_fames_dict[file]
+        default_data = json_files[file]
+        sample_data_tokens = sample_data_tokens_dict[file]
+        ego_pose_tokens = ego_pose_tokens_dict[file]
+        timestamp_dict = timestamp_files[file]
 
-    time_list = timestamp_dict[str(default_data["items"][item_ind]["attr"]["frame"])]
-    time_val1 = time_list[0] * 10**6
-    time_val2 = time_list[1] // (10**3)
-    time_val = time_val1 + time_val2
-    to_write.append({
-        "token": ego_pose_tokens[item_ind], # "",
-        "sample_token": sample_data_tokens[item_ind], 
-        "ego_pose_token": ego_pose_tokens[i], # "",
-        "calibrated_sensor_token": "",
-        "timestamp": time_val,
-        "fileformat": "pcd",
-        "is_key_frame": False,
-        "height": 0, # Prob not important
-        "width": 0, # Prob not important
-        "filename": "", #f"{pcd_folder_path}/{item_ind:06d}.pcd",
-        "prev": prev,
-        "next": next
-    })
-write_json("sample_data", to_write)
+        for i in range(len(valid_frames)-1):
+            if i == 0:
+                prev = ""
+            else:
+                prev = sample_data_tokens[i-1]
+            if i == len(valid_frames) - 1:
+                next = ""
+            else:
+                next = sample_data_tokens[i+1]
+            item_ind = valid_frames[i]
+
+            time_list = timestamp_dict[str(default_data["items"][item_ind]["attr"]["frame"])]
+            time_val1 = time_list[0] * 10**6
+            time_val2 = time_list[1] // (10**3)
+            time_val = time_val1 + time_val2
+            to_write.append({
+                "token": ego_pose_tokens[item_ind], # "",
+                "sample_token": sample_data_tokens[item_ind], 
+                "ego_pose_token": ego_pose_tokens[i], # "",
+                "calibrated_sensor_token": "",
+                "timestamp": time_val,
+                "fileformat": "pcd",
+                "is_key_frame": False,
+                "height": 0, # Prob not important
+                "width": 0, # Prob not important
+                "filename": "", #f"{pcd_folder_path}/{item_ind:06d}.pcd",
+                "prev": prev,
+                "next": next
+            })
+    write_json("sample_data", to_write)
 
 # 12. instance.json
-to_write = []
-for key in instance_tokens:
-    to_write.append({"token": instance_tokens[key],
-                    "category_token": instance_category_tokens[key],
-                    "nbr_annotations": nbr_instance_tokens[key],
-                    "first_annotation_token": first_instance_tokens[key],
-                    "last_annotation_token": last_instance_tokens[key]
-                    })
-write_json("instance", to_write)
+def write_instance():
+    to_write = []
+    for file in file_names:
+        instance_tokens = annot_file_name_dict[file]["instance_tokens"]
+        first_instance_tokens = annot_file_name_dict[file]["first_instance_tokens"]
+        last_instance_tokens = annot_file_name_dict[file]["last_instance_tokens"]
+        nbr_instance_tokens = annot_file_name_dict[file]["nbr_instance_tokens"]
+        instance_category_tokens = annot_file_name_dict[file]["instance_category_tokens"]
+
+        for key in instance_tokens:
+            to_write.append({"token": instance_tokens[key],
+                            "category_token": instance_category_tokens[key],
+                            "nbr_annotations": nbr_instance_tokens[key],
+                            "first_annotation_token": first_instance_tokens[key],
+                            "last_annotation_token": last_instance_tokens[key]
+                            })
+    write_json("instance", to_write)
 
 # 13. sample_annotation.json
-to_write = []
-for i in range(len(valid_frames)):
-    valid_ind = valid_frames[i]
-    for j, instance in enumerate(default_data["items"][valid_ind]["annotations"]):
-        
-        rotation_3d = instance["rotation"]  # Extract the 3-element rotation vector
-        # Assume the axis of rotation is ALWAYS the z-axis.
-        rotation_4d = [rotation_3d[2]] + [0, 0, 1] # Convert to 4-element rotation vector
-        to_write.append({
-            "token": annotation_tokens[valid_ind][j],
-            "sample_token": sample_data_tokens[valid_ind],
-            "instance_token": instance_tokens[instance["attributes"]["track_id"]],
-            "visibility_token": "1",
-            "attribute_tokens": [],
-            "translation": instance["position"],
-            "size": instance["scale"],
-            "rotation": rotation_4d,
-            "prev": prev_annotation_token[annotation_tokens[valid_ind][j]],
-            "next": next_annotation_token[annotation_tokens[valid_ind][j]],
-            "num_lidar_pts": 1, # Prob not important. Actually was important for a filter.
-            "num_radar_pts": 0 # Prob not important
-            })
-write_json("sample_annotation", to_write)
+def write_sample_annotation():
+    to_write = []
+    for file in file_names:
+        valid_frames = valid_fames_dict[file]
+        default_data = json_files[file]
+        annotation_tokens = annot_file_name_dict[file]["annotation_tokens"]
+        sample_data_tokens = sample_data_tokens_dict[file]
+        instance_tokens = annot_file_name_dict[file]["instance_tokens"]
+        prev_annotation_token = annot_file_name_dict[file]["prev_annotation_token"]
+        next_annotation_token = annot_file_name_dict[file]["next_annotation_token"]
+
+        for i in range(len(valid_frames)):
+            valid_ind = valid_frames[i]
+            for j, instance in enumerate(default_data["items"][valid_ind]["annotations"]):
+                
+                rotation_3d = instance["rotation"]  # Extract the 3-element rotation vector
+                # Assume the axis of rotation is ALWAYS the z-axis.
+                rotation_4d = [rotation_3d[2]] + [0, 0, 1] # Convert to 4-element rotation vector
+                to_write.append({
+                    "token": annotation_tokens[valid_ind][j],
+                    "sample_token": sample_data_tokens[valid_ind],
+                    "instance_token": instance_tokens[instance["attributes"]["track_id"]],
+                    "visibility_token": "1",
+                    "attribute_tokens": [],
+                    "translation": instance["position"],
+                    "size": instance["scale"],
+                    "rotation": rotation_4d,
+                    "prev": prev_annotation_token[annotation_tokens[valid_ind][j]],
+                    "next": next_annotation_token[annotation_tokens[valid_ind][j]],
+                    "num_lidar_pts": 1, # Prob not important. Actually was important for a filter.
+                    "num_radar_pts": 0 # Prob not important
+                    })
+    write_json("sample_annotation", to_write)
+
+
 
 # {
 # "token": "076a7e3ec6244d3b84e7df5ebcbac637",
@@ -415,4 +530,18 @@ write_json("sample_annotation", to_write)
 # "num_radar_pts": 2
 # }
 
-print(f"New files created in {nusc_folder_path}")
+if __name__ == "__main__":
+    write_attribute()               #1
+    write_calibrated_sensor()       #2
+    write_sensor()                  #3
+    write_visibility()              #4
+    write_category()                #5
+    write_scene()                   #6
+    write_map()                     #7
+    write_log()                     #8
+    write_sample()                  #9
+    write_ego_pose()                #10
+    write_sample_data()             #11
+    write_instance()                #12
+    write_sample_annotation()       #13
+    print(f"New files created in {nusc_folder_path}")

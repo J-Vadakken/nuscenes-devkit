@@ -40,17 +40,17 @@
         "other_sign": "C10"
     },
     "class_range": {
-        "traffic_sign": 100,
-        "yield_sign": 100,
-        "stop_sign": 100,
-        "railroad_bar_down": 100,
-        "RailroadBarUp": 100,
-        "type_3_barricade": 100,
-        "construction_barrel": 100,
-        "deer": 100,
-        "pedestrian": 100,
-        "car": 100,
-        "other_sign": 100
+        "traffic_sign": 1000,
+        "yield_sign": 1000,
+        "stop_sign": 1000,
+        "railroad_bar_down": 1000,
+        "RailroadBarUp": 1000,
+        "type_3_barricade": 1000,
+        "construction_barrel": 1000,
+        "deer": 1000,
+        "pedestrian": 1000,
+        "car": 1000,
+        "other_sign": 1000
     },
     "dist_fcn": "center_distance",
     "dist_th_tp": 2.0,

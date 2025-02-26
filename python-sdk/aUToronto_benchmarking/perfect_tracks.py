@@ -31,21 +31,48 @@ default_json_path = config["datumaro_dataroot_"]
 timestamp_file_path = config["dataroot_"] + '/timestamp'
 output_file_path = config["dataroot_"] + '/tracks/track.json'
 
+# Load the file names
+file_names = []
+for rosbag in config["rosbag_path_"]:
+    file_names.append(rosbag.split('/')[-1].split('.')[0])
+
 # Load the default.json files
-json_files = []
+json_files = {}
+json_file_names = [] # Temp variable for comparison purposes
 for filename in sorted(os.listdir(default_json_path)):
     if filename.endswith('.json'):
+        if filename[:-5] not in file_names:
+            print("File not found in rosbag list. Skipping file: ", filename)
+            continue
         with open(os.path.join(default_json_path, filename), 'r') as file:
-            json_files.append(json.load(file))
-default = json_files[0]
+            json_files[filename[:-5]] = json.load(file)
+            json_file_names.append(filename[:-5])
+for file in file_names:
+    if file not in json_file_names:
+        print("Terminating program. File not found in default.json list. File: ", file)
+        quit()
+default = json_files[file_names[0]]
+del json_file_names, filename, file
+del default
 
 # Load timestamp_dict
-timestamp_files = []
+timestamp_files = {}
+timestamp_file_names = []
 for filename in sorted(os.listdir(timestamp_file_path)):
     if filename.endswith('.json'):
+        if filename[:-5] not in file_names:
+            print("File not found in rosbag list. Skipping file: ", filename)
+            continue
         with open(os.path.join(timestamp_file_path, filename), 'r') as file:
-            timestamp_files.append(json.load(file))
-timestamp_dict = timestamp_files[0]
+            timestamp_files[filename[:-5]] = json.load(file)
+            timestamp_file_names.append(filename[:-5])
+for file in file_names: 
+    if file not in timestamp_file_names:
+        print("Terminating program. File not found in timestamp list. File: ", file)
+        quit()
+timestamp_dict = timestamp_files[file_names[0]]
+del timestamp_file_names, filename, file
+del timestamp_dict
 
 if not os.path.exists(config["dataroot_"] + '/tracks'):
     os.makedirs(config["dataroot_"] + '/tracks')
@@ -68,8 +95,8 @@ submission = {
 }
 results = {}
 # Creating tokens for sample_data
-def sample_data_token(frame_number):
-    return str(f"{frame_number:032d}")
+def sample_data_token(scene_number, frame_number):
+    return str(f"{scene_number:010d}{frame_number:022d}")
 
 # Finding time
 def find_time(time_list):
@@ -79,62 +106,76 @@ def find_time(time_list):
     return time_val
 
 # Creating dictionary for track_id to category name
-track_id_to_category = {}
-for i, item in enumerate(default["categories"]["label"]["labels"]):
-    track_id_to_category[i] = item["name"]
+file_track_id_to_category = {}
+for file in file_names:
+    default = json_files[file]
+    track_id_to_category = {}
+    for i, item in enumerate(default["categories"]["label"]["labels"]):
+        track_id_to_category[i] = item["name"]
+    file_track_id_to_category[file] = track_id_to_category
+del file, i, item, default, track_id_to_category
 
 # associatiing previous tracked objects with newer ones for velocity
-track_connections = {}
-# Will have this format: {track_id: []}
-# Where [] is a list of lists, where each entry is 
-# [frame_num, index]
+file_track_connections = {}
+for file_index, file in enumerate(file_names):
+    default = json_files[file]
+    track_id_to_category = file_track_id_to_category[file]
+    timestamp_dict = timestamp_files[file]
 
-# Creating a token for each frame
-for thing in default["items"]:
-    frame_num = thing["attr"]["frame"]
-    frame_token = sample_data_token(frame_num)
-    results[frame_token] = []
-    for j, annot in enumerate(thing["annotations"]):
-        rotation_3d = annot["rotation"]
-        rotation_4d = [rotation_3d[2]] + [0,0,1]
 
-        # For velocity
-        if not(annot["attributes"]["track_id"] in track_connections):
-            track_connections[annot["attributes"]["track_id"]] = [[frame_num, j]]
-            vel = [np.nan, np.nan]
-        else:
-            track_connections[annot["attributes"]["track_id"]].append([frame_num, j])
-            prev_frame = track_connections[annot["attributes"]["track_id"]][-2][0]
-            prev_ind = track_connections[annot["attributes"]["track_id"]][-2][1]
-            prev_annot = results[sample_data_token(prev_frame)][prev_ind]
-            # Hard code
-            if timestamp_dict.get(str(frame_num)) == None:
+
+
+    track_connections = {}
+    # Will have this format: {track_id: []}
+    # Where [] is a list of lists, where each entry is 
+    # [frame_num, index]
+
+    # Creating a token for each frame
+    for thing in default["items"]:
+        frame_num = thing["attr"]["frame"]
+        frame_token = sample_data_token(file_index, frame_num)
+        results[frame_token] = []
+        for j, annot in enumerate(thing["annotations"]):
+            rotation_3d = annot["rotation"]
+            rotation_4d = [rotation_3d[2]] + [0,0,1]
+
+            # For velocity
+            if not(annot["attributes"]["track_id"] in track_connections):
+                track_connections[annot["attributes"]["track_id"]] = [[frame_num, j]]
                 vel = [np.nan, np.nan]
             else:
-                prev_time = find_time(timestamp_dict[str(prev_frame)])
-                cur_time = find_time(timestamp_dict[str(frame_num)])
-                prev_loc = prev_annot["translation"]
-                cur_loc = annot["position"]
-                vx = (cur_loc[0] - prev_loc[0]) / (cur_time - prev_time)
-                vy = (cur_loc[1] - prev_loc[1]) / (cur_time - prev_time)
-                vel = [vx, vy]
+                track_connections[annot["attributes"]["track_id"]].append([frame_num, j])
+                prev_frame = track_connections[annot["attributes"]["track_id"]][-2][0]
+                prev_ind = track_connections[annot["attributes"]["track_id"]][-2][1]
+                prev_annot = results[sample_data_token(file_index, prev_frame)][prev_ind]
+                # Hard code
+                if timestamp_dict.get(str(frame_num)) == None:
+                    vel = [np.nan, np.nan]
+                else:
+                    prev_time = find_time(timestamp_dict[str(prev_frame)])
+                    cur_time = find_time(timestamp_dict[str(frame_num)])
+                    prev_loc = prev_annot["translation"]
+                    cur_loc = annot["position"]
+                    vx = (cur_loc[0] - prev_loc[0]) / (cur_time - prev_time)
+                    vy = (cur_loc[1] - prev_loc[1]) / (cur_time - prev_time)
+                    vel = [vx, vy]
 
 
 
-        sample_result = {
-            "sample_token":   frame_token,                              #<str>         -- Foreign key. Identifies the sample/keyframe for which objects are detected.
-            "translation":    annot["position"],                        #<float> [3]   -- Estimated bounding box location in meters in the global frame: center_x, center_y, center_z.
-            "size":           annot["scale"],                           #<float> [3]   -- Estimated bounding box size in meters: width, length, height.
-            "rotation":       rotation_4d,                              #<float> [4]   -- Estimated bounding box orientation as quaternion in the global frame: w, x, y, z.
-            "velocity":       vel,                                 #<float> [2]   -- Estimated bounding box velocity in m/s in the global frame: vx, vy.
-            "tracking_id":    str(annot["attributes"]["track_id"]),     #<str>         -- Unique object id that is used to identify an object track across samples.
-            "tracking_name":  track_id_to_category[annot["label_id"]],  #<str>         -- The predicted class for this sample_result, e.g. car, pedestrian.
-                                                                        #              Note that the tracking_name cannot change throughout a track.
-            "tracking_score": 1                                         #<float>       -- Object prediction score between 0 and 1 for the class identified by tracking_name.
-                                                                        #              We average over frame level scores to compute the track level score.
-                                                                        #              The score is used to determine positive and negative tracks via thresholding.
-        }
-        results[frame_token].append(sample_result)
+            sample_result = {
+                "sample_token":   frame_token,                              #<str>         -- Foreign key. Identifies the sample/keyframe for which objects are detected.
+                "translation":    annot["position"],                        #<float> [3]   -- Estimated bounding box location in meters in the global frame: center_x, center_y, center_z.
+                "size":           annot["scale"],                           #<float> [3]   -- Estimated bounding box size in meters: width, length, height.
+                "rotation":       rotation_4d,                              #<float> [4]   -- Estimated bounding box orientation as quaternion in the global frame: w, x, y, z.
+                "velocity":       vel,                                 #<float> [2]   -- Estimated bounding box velocity in m/s in the global frame: vx, vy.
+                "tracking_id":    str(annot["attributes"]["track_id"]),     #<str>         -- Unique object id that is used to identify an object track across samples.
+                "tracking_name":  track_id_to_category[annot["label_id"]],  #<str>         -- The predicted class for this sample_result, e.g. car, pedestrian.
+                                                                            #              Note that the tracking_name cannot change throughout a track.
+                "tracking_score": 1                                         #<float>       -- Object prediction score between 0 and 1 for the class identified by tracking_name.
+                                                                            #              We average over frame level scores to compute the track level score.
+                                                                            #              The score is used to determine positive and negative tracks via thresholding.
+            }
+            results[frame_token].append(sample_result)
 
 
 # Last thing
